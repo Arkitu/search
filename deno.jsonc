@@ -1,8 +1,11 @@
 {
   "imports": {
-    "std/": "https://deno.land/std/"
+    "std/": "https://deno.land/std/",
+    "cheerio": "npm:cheerio"
   },
   "tasks": {
-    "dev": "deno run --watch main.ts"
+    "run": "deno run --allow-net --allow-read --allow-write=./test/ src/main.ts",
+    "build": "deno compile --allow-net --output search src/main.ts",
+    "dev": "deno run --watch src/main.ts"
   }
 }
