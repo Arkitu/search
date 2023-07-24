@@ -6,6 +6,8 @@ const OUT_DIR = "./test"
 
 const target = Deno.args[0];
 
+const errorsPaths: string[] = []
+
 function extractLinks($: cheerio.CheerioAPI, element: cheerio.BasicAcceptedElems<cheerio.Element>): string[] {
     const links = []
     const el = $(element)
@@ -26,13 +28,19 @@ function extractLinksFromHtml(html: string): string[] {
 }
 
 async function downloadUrl(url: string) {
-    if (await fs.exists(url)) {
+    if (errorsPaths.includes(url) || await fs.exists(url)) {
         return
     }
     let path = join(OUT_DIR, url)
     await Deno.mkdir(path, {recursive: true})
 
     const data = await fetch(url)
+
+    if (!data.ok) {
+        errorsPaths.push(url)
+        console.error("HTTP Error when fetching " + path + " : " + data.status + " " + data.statusText);
+        return
+    }
 
     const isHTML = data.headers.get("content-type")?.includes("text/html")
 
@@ -48,8 +56,16 @@ async function downloadUrl(url: string) {
 }
 
 async function downloadUrlRecursive(url: string) {
-    if (await fs.exists(url)) {
-        return
+    try {
+        if (await fs.exists(url)) {
+            return
+        }
+    } catch (e) {
+        if (e instanceof Deno.errors.NotFound) {
+            // ignore
+        } else {
+            throw e
+        }
     }
 
     const links = await downloadUrl(url);
@@ -58,17 +74,16 @@ async function downloadUrlRecursive(url: string) {
         return
     }
 
-    const promises: Promise<void>[] = []
+    //const promises: Promise<void>[] = []
 
     for (const link of links) {
-        console.debug(link);
         if (link.startsWith("/")) {
-            console.debug("works");
-            promises.push(downloadUrlRecursive(join(url, link)))
+            // promises.push(downloadUrlRecursive(join(url, link)))
+            downloadUrlRecursive(join(url, link))
         }
     }
 
-    await Promise.all(promises)
+    //await Promise.all(promises)
 }
 
 console.debug(await downloadUrlRecursive(target))

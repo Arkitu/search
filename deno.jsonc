@@ -5,7 +5,7 @@
   },
   "tasks": {
     "run": "deno run --allow-net --allow-read --allow-write=./test/ src/main.ts",
-    "build": "deno compile --allow-net --output search src/main.ts",
+    "build": "deno compile --allow-net --allow-read --allow-write --output search src/main.ts",
     "dev": "deno run --watch src/main.ts"
   }
 }
