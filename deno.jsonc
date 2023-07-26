@@ -1,10 +1,11 @@
 {
   "imports": {
     "std/": "https://deno.land/std/",
-    "cheerio": "npm:cheerio"
+    "cheerio": "npm:cheerio",
+    "sqlite": "https://deno.land/x/sqlite/mod.ts"
   },
   "tasks": {
-    "run": "deno run --allow-net --allow-read --allow-write=./test/ src/main.ts",
+    "run": "deno run --allow-net --allow-read --allow-write=./test/ --allow-hrtime src/main.ts",
     "build": "deno compile --allow-net --allow-read --allow-write --output search src/main.ts",
     "dev": "deno run --watch src/main.ts"
   }
