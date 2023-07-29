@@ -2,7 +2,7 @@ import * as cheerio from "cheerio";
 import * as fs from "std/fs/mod.ts";
 import { join, parse as pathParse } from "std/path/mod.ts";
 import { red, yellow } from "std/fmt/colors.ts";
-import { DB } from "sqlite";
+import { DB, Page } from "./db.ts";
 
 const OUT_DIR = "./test"
 const MAX_OPEN_FILES = 512
@@ -10,83 +10,11 @@ const fileNameCharLimit = 250
 
 const DOWNLOAD_PER_SECOND = 100
 
-interface Page {
-    url: string,
-    html: string,
-    error?: number,
-    [key: string]: any
-}
-
-interface Link {
-    origin: number,
-    target: number,
-    [key: string]: any
-}
-
-interface Error {
-    id: number,
-    http_code?: number,
-    message?: string,
-    [key: string]: any
-}
-
-function initDB(): DB {
-    const db = new DB("test/test.db")
-    db.execute(`
-        CREATE TABLE IF NOT EXISTS pages (
-            url TEXT NOT NULL PRIMARY KEY,
-            html TEXT,
-            error INTEGER REFERENCES errors(id),
-            UNIQUE(url)
-        );
-        CREATE TABLE IF NOT EXISTS links (
-            origin INTEGER NOT NULL REFERENCES pages(id),
-            target INTEGER NOT NULL REFERENCES pages(id),
-            UNIQUE(origin, target),
-            PRIMARY KEY(origin, target)
-        );
-        CREATE TABLE IF NOT EXISTS errors (
-            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-            http_code INTEGER UNIQUE,
-            message TEXT UNIQUE
-        );
-    `)
-    return db
-}
-
-function getPageByUrl(url: string): Page | undefined {
-    const data = db.queryEntries<Page>("SELECT * FROM pages WHERE url = ?", [url])[0]
-    if (!data) {
-        return undefined
-    }
-    return data
-}
-
-function createPage(url: string, html?: string, error?: number): Page {
-    
-}
-
-function getErrorByCode(code: number): Error | undefined {
-    const data = db.queryEntries<Error>("SELECT * FROM errors WHERE http_code = ?", [code])[0]
-    if (!data) {
-        return undefined
-    }
-    return data
-}
-
-function createError(code: number, message?: string): Error {
-    if (!code && !message) {
-        throw new Error("Error must have a code or a message")
-    }
-    db.query("INSERT INTO errors (http_code, message) VALUES (?, ?)", [code, message])
-    return getErrorByCode(code)!
-}
-
-const db = initDB()
-
 // Timestamp of last promise
 let lastDownload = 0
 let openFiles = 0
+
+const db = new DB()
 
 const target = Deno.args[0];
 
@@ -124,9 +52,9 @@ function extractLinksFromHtml(html: string): string[] {
     return extractLinks($, 'body')
 }
 
-async function fetchUrl(url: string): Page {
+async function fetchUrl(url: string): Promise<Page> {
     // Check if url is in db
-    const page = getPageByUrl(url)
+    const page = db.getPageByUrl(url)
     if (page) {
         return page
     }
@@ -137,7 +65,7 @@ async function fetchUrl(url: string): Page {
     const data = await fetch(url)
     if (!data.ok) {
         console.error(yellow("HTTP Error when fetching " + url + " : " + data.status + " " + data.statusText));
-        let error = getErrorByCode(data.status) || createError(data.status)
+        let error = db.getErrorByCode(data.status) || db.createError(data.status)
         
     }
 
